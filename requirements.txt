@@ -1,0 +1,6 @@
+pandas 
+dnspython
+is-disposable-email
+email-validator
+tqdm 
+scikit-learn
