@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+import os
 import is_disposable_email
 from email_validator import validate_email, EmailNotValidError, EmailSyntaxError
 import logging
@@ -157,14 +158,14 @@ if st.sidebar.button("Validate"):
 
         # Sherlock validation
         if username:
-            with st.spinner('Running Sherlock...'):
+            with st.spinner(f'Searching for {username} ...'):
                 matches = run_sherlock(username, output_folder=".", csv=True)
             
-            st.success("Sherlock search completed!")
+            st.success("Search completed!")
             
-            st.markdown("### Sherlock Results")
             if matches:
                 username_dataframe = pd.read_csv(f"{username}.csv")
+                os.remove(f"{username}.csv")
                 st.dataframe(username_dataframe)
     if not email:
         st.sidebar.error("Please enter an email address.")
