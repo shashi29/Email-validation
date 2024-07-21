@@ -28,6 +28,7 @@ class EmailValidationResult:
     reason: str
     smtp_message: str
     email_status: str  # New column for email status
+    status_code: str
 
 class EmailValidator:
     @staticmethod
@@ -55,11 +56,11 @@ class EmailValidator:
                 code, message = server.rcpt(str(address_to_verify))
 
             if code == 250:
-                return 'VALID', 'Success'
+                return code, 'VALID', 'Success'
             else:
-                return 'INVALID', message.decode()
+                return code, 'INVALID', message.decode()
         except Exception as e:
-            return 'INVALID', f'SMTP Connection failed: {e}'
+            return 500, 'INVALID', f'SMTP Connection failed: {e}'
 
     @staticmethod
     def check_email_format(email: str) -> str:
@@ -88,7 +89,7 @@ class EmailValidator:
         domain = email.split('@')[1] if '@' in email else ''
         disposable = cls.is_disposable_email(email)
         deliverable, reason = cls.validate_email_format(email)
-        smtp_validation, smtp_message = cls.smtp_validate_email(email)
+        status_code, smtp_validation, smtp_message = cls.smtp_validate_email(email)
 
         # Determine email status based on the validation results
         email_status = "Good" if format_check == "VALID" and disposable == "No" and smtp_validation == "VALID" and deliverable == "VALID" else "Bad"
@@ -102,7 +103,8 @@ class EmailValidator:
             deliverable=deliverable,
             reason=reason,
             smtp_message=smtp_message,
-            email_status=email_status
+            email_status=email_status,
+            status_code=status_code
         )
 
 class SherlockRunner:
@@ -124,9 +126,35 @@ class StreamlitUI:
     def __init__(self):
         st.set_page_config(page_title="Email Validation App", page_icon="📧", layout="wide")
         st.sidebar.title("Email Validation App")
-        st.sidebar.subheader("Upload CSV file with 'email' column")
+        st.sidebar.subheader("Choose your input method")
 
     def run(self):
+        input_method = st.sidebar.selectbox("Select input method", ("Single Email", "Multiple Emails", "Upload CSV"))
+
+        if input_method == "Single Email":
+            self.single_email_validation()
+        elif input_method == "Multiple Emails":
+            self.multiple_email_validation()
+        elif input_method == "Upload CSV":
+            self.upload_csv_validation()
+
+    def single_email_validation(self):
+        email = st.text_input("Enter an email address to validate")
+        if st.button("Validate"):
+            result = EmailValidator.validate_email(email)
+            st.write(result.__dict__)
+
+    def multiple_email_validation(self):
+        emails = st.text_area("Enter email addresses separated by commas")
+        if st.button("Validate"):
+            email_list = [email.strip() for email in emails.split(',')]
+            results = self.process_emails_parallel(pd.Series(email_list))
+            results_df = pd.DataFrame(results)
+            st.dataframe(results_df)
+            csv = results_df.to_csv(index=False).encode('utf-8')
+            st.download_button("Download CSV", csv, "email_validation_results.csv", "text/csv")
+
+    def upload_csv_validation(self):
         uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
 
         if uploaded_file is not None:
@@ -156,7 +184,7 @@ class StreamlitUI:
         total_emails = len(emails)
         processed_emails = 0
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {executor.submit(EmailValidator.validate_email, email): email for email in emails}
             for future in as_completed(futures):
                 email = futures[future]
@@ -174,12 +202,12 @@ class StreamlitUI:
                         "deliverable": "ERROR",
                         "reason": str(e),
                         "smtp_message": "",
-                        "email_status": "Bad"
+                        "email_status": "Bad",
+                        "status_code": "500"
                     })
 
                 processed_emails += 1
                 progress_bar.progress(processed_emails / total_emails)
-                #st.write(f"Status: {processed_emails} / {total_emails}")
 
         return results
 
