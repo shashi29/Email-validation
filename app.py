@@ -11,6 +11,7 @@ import pandas as pd
 from typing import Tuple, Optional
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -123,7 +124,7 @@ class StreamlitUI:
     def __init__(self):
         st.set_page_config(page_title="Email Validation App", page_icon="📧", layout="wide")
         st.sidebar.title("Email Validation App")
-        st.sidebar.subheader("Upload Excel file with 'email' column")
+        st.sidebar.subheader("Upload CSV file with 'email' column")
 
     def run(self):
         uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
@@ -131,11 +132,17 @@ class StreamlitUI:
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             if "email" in df.columns:
+                start_time = time.time()
                 with st.spinner('Validating emails...'):
                     results = self.process_emails_parallel(df["email"])
                     results_df = pd.DataFrame(results)
+                end_time = time.time()
+                total_time = end_time - start_time
+                emails_per_second = len(df) / total_time if total_time > 0 else float('inf')
 
-                st.success("Email validation completed!")
+                st.success(f"Email validation completed in {total_time:.2f} seconds!")
+                st.write(f"Speed: {emails_per_second:.2f} emails per second")
+
                 st.dataframe(results_df)
 
                 csv = results_df.to_csv(index=False).encode('utf-8')
@@ -172,6 +179,7 @@ class StreamlitUI:
 
                 processed_emails += 1
                 progress_bar.progress(processed_emails / total_emails)
+                #st.write(f"Status: {processed_emails} / {total_emails}")
 
         return results
 
