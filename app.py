@@ -53,12 +53,24 @@ class EmailValidator:
                 server.connect(mx_record)
                 server.helo(server.local_hostname)
                 server.mail(from_address)
+                
+                # Validate the actual email
                 code, message = server.rcpt(str(address_to_verify))
-
-            if code == 250:
-                return code, 'VALID', 'Success'
-            else:
-                return code, 'INVALID', message.decode()
+                
+                if code == 250:
+                    # Validate using a dummy email
+                    # Validate the actual email with a slight modification
+                    local_part, domain_part = address_to_verify.split('@')
+                    modified_email = f"{local_part[:3]}_emaildoesnotexist_{local_part[3:]}@{domain_part}"
+                    dummy_code, dummy_message = server.rcpt(str(modified_email))
+                    
+                    if dummy_code == 250:
+                        return 500, 'INVALID', f'Unreliable SMTP server: {message.decode()}'
+                    else:
+                        print(modified_email, dummy_code, dummy_message)
+                        return 250, 'VALID', 'Success'
+                else:
+                    return code, 'INVALID', message.decode()
         except Exception as e:
             return 500, 'INVALID', f'SMTP Connection failed: {e}'
 
