@@ -1,9 +1,0 @@
-pandas 
-dnspython
-is-disposable-email
-email-validator
-tqdm 
-scikit-learn
-socialscan
-sherlock-project
-ray
