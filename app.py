@@ -196,7 +196,7 @@ class StreamlitUI:
         total_emails = len(emails)
         processed_emails = 0
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = {executor.submit(EmailValidator.validate_email, email): email for email in emails}
             for future in as_completed(futures):
                 email = futures[future]
@@ -220,8 +220,6 @@ class StreamlitUI:
 
                 processed_emails += 1
                 progress_bar.progress(processed_emails / total_emails)
-                time.sleep(2)
-
         return results
 
 if __name__ == "__main__":

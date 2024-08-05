@@ -1,0 +1,6 @@
+streamlit
+pandas
+dnspython
+is-disposable-email
+email-validator
+smtplib
