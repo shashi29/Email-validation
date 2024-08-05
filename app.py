@@ -220,6 +220,7 @@ class StreamlitUI:
 
                 processed_emails += 1
                 progress_bar.progress(processed_emails / total_emails)
+                time.sleep(5)
         return results
 
 if __name__ == "__main__":
